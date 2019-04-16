@@ -1,0 +1,92 @@
+---
+title: "Locker-Angelina-ADA-Homework-04"
+author: "Angelina Locker"
+date: "April 16, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Using Bootstrapping to Estimate Standard Errors and CIs for Linear Models.
+When we initially discussed the central limit theorem and confidence intervals, we showed how we could use bootstrapping to estimate standard errors and confidence intervals around certain parameter values, like the mean. Using bootstrapping, we could also do the same for estimating standard errors and CIs around regression parameters, such as β coefficients.
+
+[1] Using the “KamilarAndCooperData.csv” dataset, run a linear regression looking at log(HomeRange_km2) in relation to log(Body_mass_female_mean) and report your β coeffiecients (slope and intercept).
+
+```{r}
+library(curl)
+
+f <- curl("https://raw.githubusercontent.com/difiore/ADA-2019/master/KamilarAndCooperData.csv")
+KC <- read.csv(f, header = TRUE, sep = ",", stringsAsFactors = TRUE)
+head(KC)
+```
+
+```{r}
+m <- lm(data = KC, formula = log(HomeRange_km2) ~ log(Body_mass_female_mean))
+summary(m)
+```
+*b0 (t1) (intercept) = -9.441*
+*b1 (t2) (slope) = 1.036*
+
+[2] Then, use bootstrapping to sample from your data 1000 times with replacement, each time fitting the same model and calculating the appropriate coefficients. [The size of each sample should be equivalent to the number of observations in your dataset.] This generates a sampling distribution for each β coefficient. Plot a histogram of these sampling distributions.
+
+
+```{r}
+
+betas <- function(data, indices, formula) {
+  d <- data[indices,]
+  m <- lm(formula, data = d)
+  return(coef(m))
+}
+
+library(boot)
+set.seed(1234)
+results <- boot(data = KC, statistic = betas, R = 1000, formula = log(HomeRange_km2) ~ log(Body_mass_female_mean))
+
+results
+```
+
+```{r}
+plot(results)
+```
+
+[3] Estimate the standard error for each of your β coefficients as the standard deviation of the sampling distribution from your bootstrap.
+
+*standard error given in the above*
+*b0 (t1) = 0.584*
+*b1 (t2) = 0.076*
+
+[4] Also determine the 95% CI for each of your β coefficients based on the appropriate quantiles from your sampling distribution.
+
+*95% confidence intervals for bootstrapped b0:*
+```{r}
+ci_bsb0 <- boot.ci(results, index = 1, conf = 0.95, type = 'bca')
+print(ci_bsb0)
+```
+*95% confidence intervals for bootstrapped b1:*
+```{r}
+ci_bsb1 <- boot.ci(results, index = 2, conf = 0.95, type = 'bca')
+print(ci_bsb1)
+```
+
+*95% confidence intervals for entire dataset betas:*
+```{r}
+ci_m <- confint(m, level = 0.95)
+ci_m
+```
+[5] How does your answer to part [3] compare to the SE estimated from your entire dataset using the formula for standard error implemented in lm()?
+
+*The values from part[3] are slightly lower than the SE estimated from the lm() from the dataset* 
+
+[6] How does your answer to part [4] compare to the 95% CI estimated from your entire dataset?
+
+ *The 95%CI from my entire dataset is slightly wider than the 95% CI from the bootstrapped CIs*
+
+EXTRA CREDIT: + 2
+Write a FUNCTION that takes as its arguments a dataframe (“d”), a linear model (“m”, as a character string, e.g., “logHR~logBM”), a user-defined confidence interval level (“conf.level”) with default = 0.95, and a number of bootstrap replicates (“n”, with default = 1000). Your function should return a dataframe that includes: beta coefficient names; beta coefficients, standard errors, and upper and lower CI limits for the linear model based on your entire dataset; and mean beta coefficient estimates, SEs, and CI limits for those coefficients based on your bootstrap.
+
+EXTRA EXTRA CREDIT: + 1
+Graph each beta value from the linear model and its corresponding mean value, lower CI and upper CI from a bootstrap as a function of number of bootstraps from 10 to 200 by 10s.
+
+HINT: The beta value from the linear model will be the same for all bootstraps and the mean beta value may not differ that much!
